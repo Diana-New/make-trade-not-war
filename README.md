@@ -1,37 +1,9 @@
-## Welcome to GitHub Pages
+# Make Trade, Not War
 
-You can use the [editor on GitHub](https://github.com/iamdanzhao/maketradenotwar/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+This repo contains supporting resources for a big data project titled *Make Trade, Not War*, carried out by Gordon Xiang, Huahao Zhou, and Daniel Zhao. We undertok this project as the final project for Professor William King's Fall 2018 course at Yale University's Jackson Institute for Global Affairs, *Big Data and Global Policies* (GLBL 849).
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+The project centers on tracking government news sources over the source of the last two years (at time of writing) to analyze the texts' attitude towards the trade war. We scrape three news sources: press releases found on the White House.gov website, People's Daily, and China Daily, the former of which represents the official viewpoint of the United States government and the latter two of which serves as the official mouthpiece of the Chinese government. We then track how sentiment contained in these articles changes over time and extract the most common keywords used in each corpus.
 
-### Markdown
+The `scrapers` folder contains the Python code we used to scrape the text of all three sites, the `scrapedText` folder contains the raw unprocessed .csv files that we obtained from the scrapers, and the `analysis` folder contains the RMarkdown script we used to pre-process the text, analyze the data, and generate the output graphs.
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/iamdanzhao/maketradenotwar/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+Please contact iamdanzhao@gmail.com if you would like to read the full text or have questions about the code. You may use the code for your own purposes, but all code is provided as-is.
