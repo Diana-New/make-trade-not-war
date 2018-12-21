@@ -1,0 +1,335 @@
+---
+title: "GLBL 849 Final Project"
+author: "Daniel Zhao"
+date: "December 5, 2018"
+output:
+  html_document:
+    df_print: paged
+---
+### Load packages
+```{r, include = FALSE}
+require(readr)
+require(dplyr)
+require(tidyr)
+require(stringr)
+require(ggplot2)
+require(tidytext)
+require(textstem)
+```
+
+### Stopwords and functions
+```{r}
+# Modify stopwords (run the whole chunk after modifying)
+# Beginning with default set from tidytext package, add desired stopwords here
+{
+  stopwords <- filter(stop_words, lexicon == "SMART")$word
+  stopwords <- c(stopwords, "addthis_config", "data_track_addressbar",
+                 "we re", "it s", "they re", "i m", "that s", "we ve", "president s", "don t", "he s", "unite state",
+                 "you re", "we ll", "america s", "can t", "didn t", "i ve", "doesn t", "i ll", "they ve", "trump s",
+                 "president trump", "white house", "you ve", "what s", "year ago", "mr president", "haven t", "administration s",
+                 "china s", "president donald", "prime minister", "trump administration", "nation s", "president xi", "today s",
+                 "won t", "there s", "vice president", "let s", "korea s", "donald trump", "wasn t", "week ago", "month ago",
+                 "sander i", "sander w", "brady press", "press brief", "good afternoon", "president feel", "president i",
+                 "it\'s", "president", "unite", "country", "trump", "u s", "percent tarif", "billion u", "country s", "people s",
+                 "xi jinping", "false", "var", "world s", "we\'re", "that's", "they're", "don't", "i'm", "mr",
+                 "trade war", "25 percent", "10 percent", "200 billion", "50 billion", "photo vcg", "china daily",
+                 "we've make", "we're work", "unite state")
+  stopwords <- as.data.frame(stopwords)
+  colnames(stopwords) <- c("word")
+}
+
+# Input: raw scraped dataset
+# Output: the id of each document and the date (also converts
+#   it to R date format, allowing date/time manipulations), which can
+#   then be joined back onto a dataset with just the id's.
+# Purpose: makes analysis smoother.
+getDates <- function(df) {
+  result <- df %>%
+    select(id = X1, date = date)
+  result$date <- as.Date(result$date, "%B %d, %Y")
+  return(result)
+}
+
+# TOKENIZER FUNCTION (UNIGRAM)
+# Input: df = raw scraped dataset
+#   term1 = first search term
+#   term2 = second search term
+# Output: tokenized corpus, with each row representing the number of times a unique word
+#   appears in one document (one word per document per row).
+getUnigramStack <- function(df, term1, term2) {
+  df %>%
+    select(id = X1, text = text) %>% # rename columns
+    filter(grepl(term1, text, ignore.case = TRUE)) %>%
+    filter(grepl(term2, text, ignore.case = TRUE)) %>%
+    unnest_tokens(output = word, 
+                  input = text,
+                  to_lower = TRUE,
+                  strip_punct = TRUE,
+                  strip_numeric = TRUE) %>% # tokenizes (each word in corpus gets own row)
+    mutate(word = lemmatize_words(word)) %>% # lemmatizes words
+    anti_join(stopwords, by = "word") %>% # removes stopwords
+    group_by(id, word) %>%
+    summarize(n = n()) %>% # count number of times each word occurs in each document
+    left_join(get_sentiments("bing")) %>%
+    mutate(score = case_when(sentiment == "positive" ~ 1,
+                             sentiment == "negative" ~ -1,
+                             is.na(sentiment) ~ 0)) %>%
+    select(-one_of("sentiment"))
+}
+
+# TOKENIZER FUNCTION (BIGRAM)
+# Input: df = raw scraped dataset
+#   term1 = first search term
+#   term2 = second search term
+# Output: bigram-tokenized corpus, with each row representing the number of a times a
+#   unique bigram occurs in one document (one bigram per document per row).
+getBigramStack <- function(df, term1, term2) {
+  df %>%
+    select(id = X1, text = text) %>%
+    filter(grepl(term1, text, ignore.case = TRUE)) %>%
+    filter(grepl(term2, text, ignore.case = TRUE)) %>%
+    unnest_tokens(output = word, 
+                  input = text,
+                  token = "ngrams",
+                  n = 2,
+                  to_lower = TRUE,
+                  stopwords = stopwords$word) %>%
+    # Separate the words to remove rows where either word is a stopword
+    # and then lemmatize both words individually.
+    separate(word, c("word1", "word2"), sep = " ") %>%
+    mutate(word1 = lemmatize_words(word1),
+           word2 = lemmatize_words(word2)) %>%
+    anti_join(stopwords, by = c("word1" = "word")) %>%
+    anti_join(stopwords, by = c("word2" = "word")) %>%
+    unite(word, word1, word2, sep = " ") %>%
+    anti_join(stopwords, by = "word") %>%
+    # Bring the words back to form the bigram, then count the number of times
+    # the bigram occurs in each document
+    group_by(id, word) %>%
+    summarize(n = n()) %>%
+    # Separate the words again, this time to match sentiment labels
+    # and calculate a sentiment value for each bigram
+    separate(word, c("word1", "word2"), sep = " ") %>%
+    left_join(get_sentiments("bing"), by = c("word1" = "word")) %>%
+    left_join(get_sentiments("bing"), by = c("word2" = "word")) %>%
+    mutate(score.x = case_when(sentiment.x == "positive" ~ 1,
+                               sentiment.x == "negative" ~ -1,
+                               is.na(sentiment.x) ~ 0)) %>%
+    mutate(score.y = case_when(sentiment.y == "positive" ~ 1,
+                               sentiment.y == "negative" ~ -1,
+                               is.na(sentiment.y) ~ 0)) %>%
+    mutate(score = (score.x + score.y) / 2) %>%
+    unite(word, word1, word2, sep = " ") %>%
+    select(-one_of(c("sentiment.x", "sentiment.y")))
+}
+
+# SENTIMENT FUNCTION
+# Input: stack = tokenized dataset (one word per document per row)
+#   dates = dates dataset (one column has id's, one column has publication date)
+#   pubTitle = "White House" or "People's Daily", etc. (to title the graph)
+#   term = either "tariff" or "trade war" (to label the graph)
+# Output: a graph that shows sentiment change over time
+getSentiments <- function(stack, dates, pubTitle, term) {
+  # grouped has one article per row, together with the date and average sentiment
+  grouped <- stack %>%
+    group_by(id) %>%
+    summarize(n = n(), avgSentiment = mean(score)) %>%
+    left_join(dates, by = "id")
+  
+  ggplot(grouped, mapping = aes(x = date, y = avgSentiment)) + geom_hline(yintercept = 0, color = "gray50", size = 0.5) +
+    geom_vline(xintercept = as.numeric(as.Date("2018-01-22")), color = "red") +
+    geom_vline(xintercept = as.numeric(as.Date("2018-04-01")), color = "red") +
+    geom_vline(xintercept = as.numeric(as.Date("2018-06-15")), color = "red") +
+    geom_vline(xintercept = as.numeric(as.Date("2018-09-17")), color = "red") +
+    geom_vline(xintercept = as.numeric(as.Date("2018-12-01")), color = "red") +
+    geom_point() + geom_smooth(se = FALSE) +
+    scale_x_date(date_breaks = "3 months", date_labels = "%b %Y", date_minor_breaks = "1 month") +
+    scale_y_continuous(limits = c(-0.2, 0.2)) +
+    labs(x = "Date", y = "Average sentiment", title = paste(pubTitle, "sentiment"), 
+         subtitle = paste("Posts containing", paste(term, collapse = " and "), "/ n =", nrow(grouped), "/ One dot is one post"))
+}
+
+# WORD FREQUENCY DISTRIBUTION FUNCTION
+# Input: stack = tokenized dataset (one word per document per row)
+#   pubTitle, term = to title/label the graph (same as above, see above)
+# Output: a table of the top 20 terms and a graphical version of the table
+getFreqDist <- function(stack, pubTitle, term) {
+  # topWords has the top 20 most frequent words
+  topWords <- stack %>%
+    group_by(word) %>%
+    summarize(n = n()) %>%
+    top_n(20) %>%
+    mutate(word = reorder(word, n))
+  plot <- ggplot(topWords, mapping = aes(x = word, y = n)) + geom_point() + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) + coord_flip() +
+    labs(title = paste(pubTitle, "word frequency"), 
+         subtitle = paste("Word frequency:", paste(term, collapse = " and ")))
+  return(list(topWords, plot))
+}
+```
+
+### Make US models
+
+```{r}
+wh.data <- read_csv("whiteHouseOutput.csv")
+wh.dates <- getDates(wh.data)
+
+wh.stack.tariff <- getUnigramStack(wh.data, "tariff", " ")
+wh.sents.tariff <- getSentiments(wh.stack.tariff, wh.dates, "White House press release", "tariff")
+wh.freq.tariff <- getFreqDist(wh.stack.tariff, "White House press release", "tariff") # don't use this
+
+wh.stack.tariff.bigram <- getBigramStack(wh.data, "tariff", " ")
+wh.sents.tariff.bigram <- getSentiments(wh.stack.tariff.bigram, wh.dates, "White House press release", "tariff") # we don't use this
+wh.freq.tariff.bigram <- getFreqDist(wh.stack.tariff.bigram, "White House", "tariff")
+
+# wh.stack.trade_china <- getUnigramStack(wh.data, "trade", "china")
+# wh.sents.trade_china <- getSentiments(wh.stack.trade_china, wh.dates, "White House press release", c("trade", "china"))
+# wh.freq.trade_china <- getFreqDist(wh.stack.trade_china, "White House press release", c("trade", "china"))
+
+# wh.stack.trade_china.bigram <- getBigramStack(wh.data, "trade", "china")
+# wh.sents.trade_china.bigram <- getSentiments(wh.stack.trade_china.bigram, wh.dates, "White House press release", c("trade", "china"))
+# wh.freq.trade_china.bigram <- getFreqDist(wh.stack.trade_china.bigram, "White House press release", c("trade", "china"))
+
+# wh.stack.tradewar <- getUnigramStack(wh.data, "trade war", " ")
+# wh.sents.tradewar <- getSentiments(wh.stack.tradewar, wh.dates, "White House press release", "trade war")
+# wh.freq.tradewar <- getFreqDist(wh.stack.tradewar, "White House press release", "trade war")
+
+# wh.stack.tradewar.bigram <- getBigramStack(wh.data, "trade war", " ")
+# wh.sents.tradewar.bigram <- getSentiments(wh.stack.tradewar.bigram, wh.dates, "White House press release", "trade war")
+# wh.freq.tradewar.bigram <- getFreqDist(wh.stack.tradewar.bigram, "White House press release", "trade war")
+```
+
+### Make China models
+
+```{r}
+pd.data.tradewar <- read_csv("peoplesDailyOutput_tradewar.csv") %>%
+  mutate(date = as.Date(date, "%B %d, %Y")) %>%
+  filter(date > "2017-01-20") %>%
+  filter(date <= "2018-12-05")
+
+pd.data.tariff <- read_csv("peoplesDailyOutput_tariff.csv") %>%
+  mutate(date = as.Date(date, "%B %d, %Y")) %>%
+  filter(date > "2017-01-20")
+
+pd.dates.tariff <- getDates(pd.data.tariff)
+
+pd.stack.tariff <- getUnigramStack(pd.data.tariff, " ", " ")
+pd.sents.tariff <- getSentiments(pd.stack.tariff, pd.dates.tariff, "People's Daily", "tariff")
+pd.freq.tariff <- getFreqDist(pd.stack.tariff, "People's Daily", "tariff")
+
+pd.stack.tariff.bigram <- getBigramStack(pd.data.tariff, " ", " ")
+pd.sents.tariff.bigram <- getSentiments(pd.stack.tariff.bigram, pd.dates.tariff, "People's Daily", "tariff")
+pd.freq.tariff.bigram <- getFreqDist(pd.stack.tariff.bigram, "People's Daily", "tariff")
+
+# pd.dates.tradewar <- getDates(pd.data.tradewar)
+
+# pd.stack.tradewar <- getUnigramStack(pd.data.tradewar, " ", " ")
+# pd.sents.tradewar <- getSentiments(pd.stack.tradewar, pd.dates.tradewar, "People's Daily", "trade war")
+# pd.freq.tradewar <- getFreqDist(pd.stack.tradewar, "People's Daily", "trade war")
+
+# pd.stack.tradewar.bigram <- getBigramStack(pd.data.tradewar, " ", " ")
+# pd.sents.tradewar.bigram <- getSentiments(pd.stack.tradewar.bigram, pd.dates.tradewar, "People's Daily", "trade war")
+# pd.freq.tradewar.bigram <- getFreqDist(pd.stack.tradewar.bigram, "People's Daily", "trade war")
+```
+
+
+```{r}
+cd.data.tradewar <- read_csv("chinaDailyOutput_tradewar.csv") %>%
+  mutate(date = as.Date(date, "%B %d, %Y")) %>%
+  filter(date > "2017-01-20") %>%
+  filter(date <= "2018-12-05")
+
+cd.data.tariff <- read_csv("chinaDailyOutput_tariff.csv") %>%
+  mutate(date = as.Date(date, "%B %d, %Y")) %>%
+  filter(date > "2017-01-20")
+
+cd.dates.tariff <- getDates(cd.data.tariff)
+
+cd.stack.tariff <- getUnigramStack(cd.data.tariff, " ", " ")
+cd.sents.tariff <- getSentiments(cd.stack.tariff, cd.dates.tariff, "China Daily", "tariff")
+cd.freq.tariff <- getFreqDist(cd.stack.tariff, "China Daily", "tariff")
+
+cd.stack.tariff.bigram <- getBigramStack(cd.data.tariff, " ", " ")
+cd.sents.tariff.bigram <- getSentiments(cd.stack.tariff.bigram, cd.dates.tariff, "China Daily", "tariff")
+cd.freq.tariff.bigram <- getFreqDist(cd.stack.tariff.bigram, "China Daily", "tariff")
+
+# cd.dates.tradewar <- getDates(cd.data.tradewar)
+
+# cd.stack.tradewar <- getUnigramStack(cd.data.tradewar, " ", " ")
+# cd.sents.tradewar <- getSentiments(cd.stack.tradewar, cd.dates.tradewar, "China Daily", "trade war")
+# cd.freq.tradewar <- getFreqDist(cd.stack.tradewar, "China Daily", "trade war")
+
+# cd.stack.tradewar.bigram <- getBigramStack(cd.data.tradewar, " ", " ")
+# cd.sents.tradewar.bigram <- getSentiments(cd.stack.tradewar.bigram, cd.dates.tradewar, "China Daily", "trade war")
+# cd.freq.tradewar.bigram <- getFreqDist(cd.stack.tradewar.bigram, "China Daily", "trade war")
+```
+
+# Other experimental code
+
+```{r}
+# Graph that shows frequency of the top 20 words over time, all words one one graph as separate lines.
+
+df <- pd.stack.tariff.bigram %>%
+  left_join(pd.dates.tariff) %>%
+  mutate(month = as.Date(paste0(format(date, "%Y-%m"), "-01"), "%Y-%m-%d")) %>%
+  group_by(month, word) %>%
+  summarize(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  inner_join(df.topWords, by = "word") %>%
+  select(month = month, word = word, n = n.x, freq = freq)
+
+df.plot <- ggplot(df, aes(x = month, y = freq, color = word)) + geom_line() + scale_y_continuous(limits = c(0, 0.01))
+
+# Graph that shows frequency (as a proportion) of the top 20 words over time.
+# Presented as one graph for each of the top 20 words.
+
+df2 <- wh.stack.trade_china.bigram %>%
+  left_join(wh.dates) %>%
+  mutate(month = as.Date(paste0(format(date, "%Y-%m"), "-01"), "%Y-%m-%d")) %>%
+  group_by(month, word) %>%
+  summarize(n = n()) %>%
+  mutate(freq = n / sum(n)) %>%
+  inner_join(wh.freq.trade_china.bigram[[1]], by = "word") %>%
+  select(month = month, word = word, n = n.x, freq = freq)
+
+df2.plot <- ggplot(df, aes(x = month, y = freq)) + geom_line() + geom_smooth() + facet_wrap(~word)
+
+# Returns the number of words matched by each sentiment dataset
+countSentiments <- function(df, term1, term2) {
+  df2 <- df %>%
+    select(id = X1, text = text) %>% # rename columns
+    filter(grepl(term1, text, ignore.case = TRUE)) %>%
+    filter(grepl(term2, text, ignore.case = TRUE)) %>%
+    unnest_tokens(output = word, 
+                  input = text,
+                  to_lower = TRUE,
+                  strip_punct = TRUE,
+                  strip_numeric = TRUE) %>% # tokenizes (each word in corpus gets own row)
+    anti_join(stopwords, by = "word") %>% # removes stopwords
+    mutate(word = lemmatize_words(word)) %>%
+    group_by(word)
+  
+  df.nrc <- df2 %>%
+    left_join(get_sentiments("nrc"), by = "word") %>%
+    group_by(word) %>%
+    slice(1L)
+  nrc <- paste0("nrc: ", sum(!is.na(df.nrc$sentiment)), "/", nrow(df.nrc), " = ", sum(!is.na(df.nrc$sentiment)) / nrow(df.nrc))
+  
+  df.afinn <- df2 %>%
+    left_join(get_sentiments("afinn"), by = "word") %>%
+    slice(1L)
+  afinn <- paste0("afinn: ", sum(!is.na(df.afinn$score)), "/", nrow(df.afinn), " = ", sum(!is.na(df.afinn$score)) / nrow(df.afinn))
+  
+  df.bing <- df2 %>%
+    left_join(get_sentiments("bing"), by = "word") %>%
+    slice(1L)
+  bing <- paste0("bing: ", sum(!is.na(df.bing$sentiment)), "/", nrow(df.bing), " = ", sum(!is.na(df.bing$sentiment)) / nrow(df.bing))
+  
+  df.loughran <- df2 %>%
+    left_join(get_sentiments("loughran"), by = "word") %>%
+    slice(1L)
+  loughran <- paste0("loughran: ", sum(!is.na(df.loughran$sentiment)), "/", nrow(df.loughran), " = ", sum(!is.na(df.loughran$sentiment)) / nrow(df.loughran))
+  
+  return(list(nrc, afinn, bing, loughran))
+}
+```
