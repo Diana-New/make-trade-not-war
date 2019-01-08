@@ -22,6 +22,12 @@ To answer this question, we turned to data sources that represent official, stat
 
 #### Data collection
 
+We scraped the [White House news archive](https://www.whitehouse.gov/news/), which contains official statements, press releases, remarks, and transcripts of press briefings since Trump's inauguration in January 2017 up to early December 2018 (the time of scraping), for article titles, dates, and content. Since this dataset contains all content posted by his administration, we then performed a search for the word "tariff" to yield one dataset, and then for "trade war" to yield another dataset, to filter out any documents that weren't related to the trade war.
+
+We alo scraped the [People's Daily](people.com.cn) and [China Daily](chinadaily.com.cn) websites by searching for the terms "tariff" and "trade war", and scraping all search results going back to January 2017 to match the date range of the White House release dataset. 
+
+The analysis displays graphics for the "tariffs" datasets for each of White House, People's Daily, and China Daily, but results and patterns were similar for the "trade war" dataset.
+
 #### Data processing
 
 - Scraping White House and People’s Daily in Python using `requests` and `BeautifulSoup`
@@ -32,6 +38,33 @@ To answer this question, we turned to data sources that represent official, stat
 ## Key findings
 
 ### Keyword analysis
+
+The top 20 bigram keywords observed in each of the cleaned, lemmatized, and stopwords-removed corpuses were as follows (ordered from first-place to twentieth-place:
+
+|White House |n| People's Daily |n|China Daily|n|
+|--- |--- |--- |--- |--- |--- |
+|national security|90|free trade|85|percent tariff|458|
+|trade deal|88|percent tariff|84|free trade|457|
+|long time|76|trade organization|84|trade partner|401|
+|north korea|71|international trade|81|european union|378|
+|american worker|68|chinese good|74|trade dispute|362|
+|south korea|68|billion u.s|70|trade organization|362|
+|american people|67|multilateral trade|63|impose tariff|350|
+|tax cut|66|additional tariff|61|chinese good|338|
+|intellectual property|62|intellectual property|59|intellectual property|315|
+|european union|61|trade system|58|chinese import|314|
+|trade practice|56|economic growth|57|international trade|302|
+|unfair trade|54|global trade|54|billion worth|298|
+|free trade|49|chinese import|52|global trade|289|
+|great job|49|trade dispute|49|large economy|238|
+|trade deficit|48|trade partner|49|trade tension|237|
+|trade agreement|47|chinese market|48|long term|236|
+|reciprocal trade|45|organization wto|48|2018 photo|233|
+|play field|44|chinese product|47|global economy|230|
+|executive order|42|global economy|47|economic growth|227|
+|good job|41|trade representative|47|trade deficit|227|
+
+
 
 ### Sentiment change over time
 
