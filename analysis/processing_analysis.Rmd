@@ -312,6 +312,24 @@ kable(cbind(topic = 1:5, pd.lda.beta), caption = "LDA model with k = 5 topics") 
 
 # Other experimental code
 
+The number of common words in the top 20 White House and the top 20 People's Daily:
+```{r}
+wh.freq.tariff.bigram[[1]] %>%
+  inner_join(pd.freq.tariff.bigram[[1]], by = "word")
+```
+
+The number of common words in the top 20 White House and the top 20 China Daily:
+```{r}
+wh.freq.tariff.bigram[[1]] %>%
+  inner_join(cd.freq.tariff.bigram[[1]], by = "word")
+```
+
+The number of common words in the top 20 People's Daily and the top 20 China Daily:
+```{r}
+cd.freq.tariff.bigram[[1]] %>%
+  inner_join(pd.freq.tariff.bigram[[1]], by = "word")
+```
+
 ```{r, cache = TRUE, message = FALSE, warning = FALSE}
 # Graph that shows frequency of the top 20 words over time, all words no one graph as separate lines.
 pd.freqOverTime.tariff.bigram <- vector(mode = "list")
