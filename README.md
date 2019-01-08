@@ -6,7 +6,7 @@ The project centers on tracking government news sources over the source of the l
 
 The `scrapers` folder contains the Python code we used to scrape the text of all three sites, the `scrapedText` folder contains the raw unprocessed .csv files that we obtained from the scrapers, and the `analysis` folder contains the RMarkdown script we used to pre-process the text, analyze the data, and generate the output graphs.
 
-Below is an abbreviated version of our quantitative findings and contextualized results. Please contact iamdanzhao@gmail.com if you would like to read the full text, or have questions about the code. You may use the code for your own purposes, but all code is provided as-is.
+Below is a summary of our key quantitative findings. Please contact iamdanzhao@gmail.com if you would like to read the full text, or have questions about the code. You may use the code for your own purposes, but all code is provided as-is.
 
 ## Project synopsis
 
@@ -43,7 +43,14 @@ In the below graphs, the five red lines correspond to the following events:
 - **Fourth red line: September 17, 2018**, when the Trump administration announces the third wave
 - **Fifth red line: December 1, 2018**, when both sides agreed to a trade truce
 
-!(White House sentiment)[wh_sents_tariff_med.png]
+The blue lines are smoothing curves applied to the scatterplot.
+
+![White House sentiment](wh_sents_tariff_med.jpeg)
+![People's Daily sentiment](pd_sents_tariff_med.jpeg)
+
+We can see that at a majority of the major tariff events we've identified, there is a notable behavior in the smoothing curve, either a trough, peak, or inflection point. We also notice that there are clusters of posts near these events. This indicates, as expected, that both parties are putting out content around the time of these tariff events, and Chinese posts generally lag slightly behind White House press release posts, presumably Chinese coverage of tariffs are mostly reactionary to US tariff decisions. This is most evident in the March/April round of tariffs: the second red line in all three graphs above mark April 1, 2018, and we see that the clustering of posts on the White House website are mostly clustered before the line, while the clustering of posts on the Chinese websites are heavily clustered around the line itself.
+
+One pattern to note is the behavior of sentiment in relation to negotiations attempts. In early May, we see average sentiment rise truce talks and negotiations. During this period, there were two instances where the United States and China engaged in talks to attempt to reach a deal: the first occurred in early May and failed, while the second occurred in early December and resulted in a successful 90-day trade truce. In both instances, we see average sentiment rise approaching these events (look to the period immediately following the second red line and the period immediately preceding the fifth red line). In the case of the failed truce in May, we see sentiment reach a peak in early May, then return to a downward trajectory; we can hypothesize that this was a result of the failure to reach an agreement. In December, we do not yet have full data for sentiment changes following the agreement reached on December 1 (since our data ends on December 5); while we would expect sentiment to rise because of the successful attempt at reaching an agreement, it will be interesting to see how the arrest of Huawei CFO Meng Wanzhou interacts with the trend.
 
 ### Experiments with topic models
 
