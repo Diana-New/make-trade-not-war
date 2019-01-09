@@ -35,6 +35,8 @@ The analysis displays graphics for the "tariffs" datasets for each of White Hous
 - Cleaning in R using `tidytext` and `textstem`: tokenizing, lemmatizing, removing stopwords, attaching sentiment
 - Analysis in R using `tidytext`, and visualization using `ggplot2`, and topic models using `topicmodels`
 
+The sentiment scale used was the "Bing" sentiment scorings provided in the R `tidytext` package, which rates words as "positive", "negative", or no score. Words assigned the label "positive" were coded as `+1`, "negative" as `-1`, and neutrall as `0`. These scores were then averaged across all the words in a document to find a document's average sentiment. Other sentiment scales provided in R either provided labels to a smaller share of the words in our corpus or did not attach sentiments that could easily be translated into a numerical scale.
+
 ## Key findings
 
 ### Keyword analysis
@@ -64,7 +66,9 @@ The top 20 bigram keywords observed in each of the cleaned, lemmatized, and stop
 |executive order|42|global economy|47|economic growth|227|
 |good job|41|trade representative|47|trade deficit|227|
 
+The first observation that sticks out is that the words differ significantly between U.S. and Chinese sources: only two phrases, intellectual property and free trade, are shared by the White House and People's Daily datasets, and only four words are shared between the White House and China Daily datasets, while thirteen words are shared between the two Chinese datasets. The latter observation is reassuring, as it provides evidence that the People's Daily and China Daily datasets are sufficiently similar.
 
+The top keywords in the Chinese datasets place a greater emphasis on the notion of free trade and the liberal international order, with words such as "trade organization" (referring to the WTO), "trade system", and "global economy". Furthermore, the use of words such as "trade partner", "trade organization", and "multilateral trade" suggest that these sources prefer to emphasize the importance of cooperation and multilateralism in solving the trade dispute. In contrast, the White House dataset seems to place greater importance on domestic issues: subjects such as "national security", creating a level "playing field", and Trump's "tax cuts" are mentioned (note that they appear slightly differently in the above results because these results are the lemmatized forms of the words).
 
 ### Sentiment change over time
 
