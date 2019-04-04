@@ -33,9 +33,9 @@ The analysis displays graphics for the "tariffs" datasets for each of White Hous
 - Scraping White House and People’s Daily in Python using `requests` and `BeautifulSoup`
 - Scraping China Daily in Python using `requests`, `BeautifulSoup`, and `Selenium`
 - Cleaning in R using `tidytext` and `textstem`: tokenizing, lemmatizing, removing stopwords, attaching sentiment
-- Analysis in R using `tidytext`, and visualization using `ggplot2`, and topic models using `topicmodels`
+- Analysis in R using `tidytext`, visualization using `ggplot2`, and topic models using `topicmodels`
 
-The sentiment scale used was the "Bing" sentiment scorings provided in the R `tidytext` package, which rates words as "positive", "negative", or no score. Words assigned the label "positive" were coded as `+1`, "negative" as `-1`, and neutrall as `0`. These scores were then averaged across all the words in a document to find a document's average sentiment. Other sentiment scales provided in R either provided labels to a smaller share of the words in our corpus or did not attach sentiments that could easily be translated into a numerical scale.
+The sentiment scale used was the "Bing" sentiment scorings provided in the R `tidytext` package, which rates words as "positive", "negative", or no score. Words assigned the label "positive" were coded as `+1`, "negative" as `-1`, and neutral as `0`. These scores were then averaged across all the words in a document to find a document's average sentiment. Other sentiment scales provided in R either provided labels to a smaller share of the words in our corpus or did not attach sentiments that could easily be translated into a numerical scale.
 
 ## Key findings
 
